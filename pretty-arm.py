@@ -85,7 +85,7 @@ def objc_methname_for_file(executable):
            read_bytes += len(chunk)
            buffer += chunk
            str_addr = section_desc['vmaddr']+read_bytes-len(buffer) 
-           while '\x00' in buffer:
+           while '\x00' in buffer and str_addr < section_desc['vmaddr']+section_desc['size']:
                length = buffer.index('\x00')
                str = struct.unpack("%ds"%length,buffer[:length])[0]
                buffer = buffer[length+1:]
@@ -184,7 +184,7 @@ def pretty_method_call(asm,selrefs,methnames):
                                 'arguments': lambda x: x in ["r1, [%s, #0]"%reg_name, "r1, [%s]"%reg_name]
                             },
                             {'repeat': 5,'arguments': lambda x: not x.startswith("r1")},
-                            {'command': lambda x: x == 'blx', 'arguments': lambda x: x.endswith('0xc1fb4')}
+                            {'command': lambda x: x == 'blx', 'arguments': lambda x: x.endswith('0x155db4')}
                        ])
         matches.extend(match)
     for match in matches:
@@ -194,6 +194,7 @@ def pretty_method_call(asm,selrefs,methnames):
             match[-1]['full'] = match[-1]['full'] + ". -[%s]"%methnames[selrefs[addr]]
         except Exception as e:
             pass
+            #print match[-1]
             #print json.dumps(match,indent=4)
             #print addr
             #print traceback.format_exc()
