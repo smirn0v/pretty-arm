@@ -2,6 +2,7 @@
 
 import sys
 import subprocess
+import string
 
 def asm_for_file(executable):
     """
@@ -96,7 +97,22 @@ def main(executable):
                         {'command': lambda x: x == 'blx'}
                    ])
     for match in result:
-        match[0]['full'] = match[0]['full'] + " !!! MATCHED !!!"
+        try:
+            addr = 0
+            arguments = match[0]['arguments']
+            ls_16 = int(arguments[string.find(arguments,",")+1:],16)
+            arguments = match[2]['arguments']
+            ms_16 = int(arguments[string.find(arguments,",")+1:],16)
+
+            addr = (ls_16 & 0xffff) | (ms_16 << 16)
+
+            if len(match[5]) != 0:
+                addr += match[5][0]['address'] 
+            else:
+                addr += match[6]['address']
+
+            match[-1]['full'] = match[-1]['full'] + "| Address of selector is 0x%x"%addr
+        except: pass
     for line in asm:
         print line['full']
     
