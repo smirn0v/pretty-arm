@@ -17,11 +17,12 @@ def asm_for_file(executable):
         address: 0x000035ce, 
         command: "ldr", 
         arguments: "r0, [r2, #0]"
+        comments: ""
       }
     ]
     """
     asm = subprocess.check_output(["otool","-tvV","-arch","armv7",executable])
-    asm_lines = asm.splitlines()[2:]
+    asm_lines = asm.splitlines()
 
     result = []
     for idx,line in enumerate(asm_lines):
@@ -32,6 +33,8 @@ def asm_for_file(executable):
             asm_elements['command'] = elements[2]
         if len(elements) > 3:
             asm_elements['arguments'] = elements[3]
+        if len(elements) > 4:
+            asm_elements['comments'] = elements[4]
         result.append(asm_elements)
     return result
 
@@ -115,7 +118,8 @@ def match_asm(asm,full_predicate):
             return True
         return match_key(asm_line,predicate,'address') and \
                match_key(asm_line,predicate,'command') and \
-               match_key(asm_line,predicate,'arguments')
+               match_key(asm_line,predicate,'arguments') and \
+               match_key(asm_line,predicate,'comments')
 
     result = []
 
@@ -184,7 +188,9 @@ def pretty_method_call(asm,selrefs,methnames):
                                 'arguments': lambda x: x in ["r1, [%s, #0]"%reg_name, "r1, [%s]"%reg_name]
                             },
                             {'repeat': 5,'arguments': lambda x: not x.startswith("r1")},
-                            {'command': lambda x: x == 'blx', 'arguments': lambda x: x.endswith('0x155db4')}
+                            #TODO: manually extract objc_msgSend symbol from dyld info, instead of using
+                            # otool comments ?
+                            {'command': lambda x: x == 'blx', 'comments': lambda x: x.endswith('_objc_msgSend')}
                        ])
         matches.extend(match)
     for match in matches:
