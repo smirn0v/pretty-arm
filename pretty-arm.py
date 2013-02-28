@@ -18,7 +18,7 @@ def asm_for_file(executable):
     result = []
     for idx,line in enumerate(asm_lines):
         elements = line.split('\t')
-        asm_elements = {'line': idx, 'full': line}
+        asm_elements = {'line':idx,'full': line}
         if len(elements) >= 3:
             asm_elements['address'] = int(elements[0],16)
             asm_elements['command'] = elements[2]
@@ -67,11 +67,13 @@ def match_asm(asm,full_predicate):
                 else: match.append(asm[idx])
                 idx+=1
             else:
+                local_match = []
                 while match_line_to_predicate(asm[idx],predicate) and repeat>0 and \
                       not match_line_to_predicate(asm[idx],full_predicate[predicate_index+1]):
-                    match.append(asm[idx])
+                    local_match.append(asm[idx])
                     repeat-=1
                     idx+=1
+                match.append(local_match)
                 if not match_line_to_predicate(asm[idx],full_predicate[predicate_index+1]):
                     break
             if predicate_index == len(full_predicate)-1:
@@ -87,11 +89,17 @@ def main(executable):
                         {'repeat': 20},
                         {'command': lambda x: x == 'movt', 'arguments': lambda x: x.startswith("r0,")},
                         {'repeat': 50},
-                        {'command': lambda x: x == 'ldr', 'arguments': lambda x: x.endswith("[r0, #0]")},
+                        {'command': lambda x: x == 'add', 'arguments': lambda x: x.startswith("r0, pc")},
+                        {'repeat': 50},
+                        {'command': lambda x: x == 'ldr', 'arguments': lambda x: x == "r1, [r0, #0]"},
                         {'repeat': 20},
                         {'command': lambda x: x == 'blx'}
                    ])
-    print result
+    for match in result:
+        match[0]['full'] = match[0]['full'] + " !!! MATCHED !!!"
+    for line in asm:
+        print line['full']
+    
 
 def usage():
     print "usage: {} <executable>".format(sys.argv[0])
