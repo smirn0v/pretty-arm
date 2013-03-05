@@ -190,7 +190,7 @@ def pretty_method_call(asm,selrefs,methnames):
                             {'repeat': 5,'arguments': lambda x: not x.startswith("r1")},
                             #TODO: manually extract objc_msgSend symbol from dyld info, instead of using
                             # otool comments ?
-                            {'command': lambda x: x == 'blx', 'comments': lambda x: x.endswith('_objc_msgSend')}
+                            {'command': lambda x: x in ['blx','b.w'], 'comments': lambda x: x.endswith('_objc_msgSend') or x.endswith('_objc_msgSend$shim')}
                        ])
         matches.extend(match)
     for match in matches:
