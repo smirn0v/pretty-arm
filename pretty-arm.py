@@ -172,7 +172,7 @@ def addr_from_movw_movt(movw_line,movt_line):
 
     return (ls_16 & 0xffff) | (ms_16 << 16)
 
-def pretty_method_call(asm,selrefs,methnames):
+def pretty_msgSend_1(asm,selrefs,methnames):
     matches = []
     for reg_name in ["r0","r1","r2","r3","r4","r5","r6","r8"]:
         match = \
@@ -200,10 +200,43 @@ def pretty_method_call(asm,selrefs,methnames):
             match[-1]['full'] = match[-1]['full'] + ". -[%s]"%methnames[selrefs[addr]]
         except Exception as e:
             pass
-            #print match[-1]
-            #print json.dumps(match,indent=4)
-            #print addr
-            #print traceback.format_exc()
+
+def pretty_msgSend_2(asm,selrefs,methnames):
+    matches = []
+    for reg_name1 in ["r0","r1","r2","r3","r4","r5","r6","r8"]:
+        for reg_name2 in ["r0","r1","r2","r3","r4","r5","r6","r8"]:
+            if reg_name1 == reg_name2:
+                continue
+            match = \
+            match_asm(asm, [ 
+                                {'command': lambda x: x == 'movw', 'arguments': lambda x: x.startswith(reg_name1+",")},
+                                {'repeat': 5, 'command':lambda x: x!='blx','arguments': lambda x: not x.startswith(reg_name1)},
+                                {'command': lambda x: x == 'movt', 'arguments': lambda x: x.startswith(reg_name1+",")},
+                                {'repeat': 5, 'command':lambda x: x!='blx','arguments': lambda x: not x.startswith(reg_name1)},
+                                {'command': lambda x: x == 'add', 'arguments': lambda x: x.startswith(reg_name1+", pc")},
+                                {'repeat': 5, 'command':lambda x: x!='blx','arguments': lambda x: not x.startswith(reg_name1)},
+                                {
+                                    'command': lambda x: x in ['ldr','ldr.w'], 
+                                    'arguments': lambda x: x in ["%s, [%s, #0]"%(reg_name2,reg_name1), "%s, [%s]"%(reg_name2,reg_name1)]
+                                },
+                                {'repeat': 5,'arguments': lambda x: not x.startswith(reg_name2)},
+                                {'command': lambda x: x == 'mov', 'arguments': lambda x: x == "r1, %s"%reg_name2},
+                                #TODO: manually extract objc_msgSend symbol from dyld info, instead of using
+                                # otool comments ?
+                                {'command': lambda x: x in ['blx','b.w'], 'comments': lambda x: x.endswith('_objc_msgSend') or x.endswith('_objc_msgSend$shim')}
+                           ])
+            matches.extend(match)
+    for match in matches:
+        try:
+            addr = addr_from_movw_movt(match[0],match[2])
+            addr += pc_address_from_line(match[4])
+            match[-1]['full'] = match[-1]['full'] + ". -[%s]"%methnames[selrefs[addr]]
+        except Exception as e:
+            pass
+
+def pretty_method_call(asm,selrefs,methnames):
+    pretty_msgSend_1(asm,selrefs,methnames)
+    pretty_msgSend_2(asm,selrefs,methnames)
 
 def main(executable):
     asm = asm_for_file(executable)
